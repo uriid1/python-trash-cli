@@ -1,6 +1,10 @@
 # python-trash-cli
 Managing the Trash from the Command Line.
 
+This script is designed according to the specification:
+But does not include 'directorysizes' support.
+https://specifications.freedesktop.org/trash-spec/trashspec-latest.html
+
 # Usage
 ```
 -P, --put
