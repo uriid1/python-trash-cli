@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+
+####--------------------------------####
+#--# Author:   by uriid1            #--#
+#--# License:  GNU GPL              #--#
+#--# Telegram: @foxdacam            #--#
+#--# Mail:     appdurov@gmail.com   #--#
+####--------------------------------####
+
+# Import libs
+import sys
+import time
+import os.path, os
+import shutil
+from datetime import datetime
+from urllib.parse import unquote, quote
+
+# Path to trash
+home = os.path.expanduser("~")
+trash_path = os.path.join(home, '.local', 'share', 'Trash')
+trash_path_files = os.path.join(trash_path, 'files')
+trash_path_info = os.path.join(trash_path, 'info')
+
+# Help text :)
+help_text = '''Discription:
+    Managing the Trash from the Command Line.
+
+    Author:   by uriid1
+    License:  GNU GPL
+    Telegram: @main_moderator
+    Mail:     appdurov@gmail.com
+
+    -P, --put
+        Sending one or more files to the trash.
+        The '*' operator is supported to send all
+        files from the specified directory.
+        Example: trash --put *
+
+    -L, --list
+        show the content of the Trash.
+        Example: trash --list
+
+    -RM, --remove
+        Deleting one or more files from the trash.
+        Example: trash -RM foo bar
+
+    -E, --empty
+        Emptying the Trash.
+        Use the -y option to delete without confirmation.
+        Example: trash -E -y
+
+    -RS, --restore
+        Restoring one or more files.
+        Example: trash -RS foo bar
+
+    -RSA, --restore-all
+        Restoring all files.
+        Example: trash --restore-all
+'''
+
+# Console color print
+c_warn   = [192, 57, 43]
+c_info   = [246, 116, 0]
+c_folder = [61, 174, 233]
+c_file   = [28, 220, 154]
+def colored(color, text):
+    return "\033[38;2;{};{};{}m{}\033[38;2;255;255;255m".format(color[0], color[1], color[2], text)
+
+#
+def confirm(text):
+    confirm = input(text)
+    return confirm == 'y' or confirm == 'Y'
+
+#
+def make_date_and_time():
+    # datetime object containing current date and time
+    now = datetime.now()
+    # dd/mm/YY H:M:S
+    dt_string = now.strftime("%Y-%m-%dT%H:%M:%S")
+    return dt_string
+
+#
+def make_trash_info(target_name, path):
+    info = "[Trash Info]\nPath={}\nDeletionDate={}".format(quote(path), make_date_and_time())
+    with open(os.path.join(trash_path_info, target_name+'.trashinfo'), 'a') as out:
+        out.write(info)
+
+# Checking if a file or directory exists
+def is_exists(path):
+    return os.path.isfile(path) or os.path.isdir(path)
+
+# Put in Trash
+def put(target):
+    # Target check
+    path_target = os.path.join(os.getcwd(), target)
+    if not is_exists(path_target):
+        print(colored(c_warn, target)+' is not a file or directory')
+        return
+
+    # Check file exists in trash
+    target_name = target
+    if is_exists(os.path.join(trash_path_files, target)):
+        old_target_name = target
+        date = make_date_and_time()
+        target_prop = os.path.splitext(target)
+        target_name = target_prop[0]+'_[{}]'.format(date)+target_prop[1]
+        print('{} is exists in Trash. Rename to {}'.format(colored(c_info, target), colored(c_info, target_name)))
+
+    # Move target
+    shutil.move(target, os.path.join(trash_path_files, target_name))
+
+    # Make trash info
+    make_trash_info(target_name, path_target)
+
+    # Inform
+    print('{} has been moved to {}'.format(colored(c_info, target_name), colored(c_info, 'Trash')))
+
+# List files/dirs from Trash
+def list():
+    files = os.scandir(trash_path_files)
+    for f in files:
+        status = os.stat(f)
+        if f.is_dir():
+            print(colored(c_info, time.ctime(status.st_ctime)), colored(c_folder, f.name)+'/')
+        else:
+            print(colored(c_info, time.ctime(status.st_ctime)), colored(c_file, f.name))
+
+# Remove file or dir from Trash
+def rm(path, target):
+    if not is_exists(path):
+        print(colored(c_warn, target)+' is not exists in Trash')
+        return
+
+    # Remove target
+    if os.path.isfile(path) or os.path.islink(path):
+        # remove the file
+        os.remove(path)
+    elif os.path.isdir(path):
+        # remove dir and all contains
+        shutil.rmtree(path)
+
+    # Remove info file
+    info_file = os.path.join(trash_path_info, target+'.trashinfo')
+    if os.path.isfile(info_file):
+        os.remove(info_file)
+
+    # Inform
+    print(colored(c_info, target)+' successfully deleted')
+
+# Restore file
+def restore(path, target):
+    if not is_exists(path):
+        print(colored(c_warn, target)+' is not exists in Trash')
+        return
+
+    # Check info file 
+    path_info_file = os.path.join(trash_path_info, target+'.trashinfo')
+    if not is_exists(path_info_file):
+        print(colored(c_warn, target)+' - info file is not exists in Trash')
+        return
+
+    # Parse restore path
+    with open(path_info_file, "r") as f:
+        text = f.readlines()
+        restore_path = unquote(text[1].split('=')[1].replace('\n', ''))
+
+    # File exists
+    if is_exists(restore_path):
+        if not confirm("[File exists on the restore path. Overwrite? Y/n]: "):
+            return
+
+    # Move file
+    shutil.move(path, restore_path)
+
+    # Delete info file
+    os.remove(path_info_file)
+
+    # Inform
+    print('Restored '+colored(c_info, restore_path))
+
+
+def main():
+    # Check args
+    if len(sys.argv) == 1:
+        print(colored(c_warn, "No argument specified"))
+        return
+
+    # Args switch-case
+    match sys.argv[1]:
+        case '-P' | '--put':
+            if len(sys.argv) == 2:
+                print(colored(c_warn, "No argument specified. Use: trash -help"))
+                return
+
+            # Put all files
+            if len(sys.argv) > 3:
+                if confirm("[Move all files to the trash? Y/n]: "):
+                    for i in range(2, len(sys.argv)):
+                        put(sys.argv[i])
+                return
+
+            # Put one file
+            put(sys.argv[2])
+
+        case '-L' | '--list':
+            list()
+
+        case '-RM' | '--remove':
+            if len(sys.argv) == 2:
+                print(colored(c_warn, "No argument specified"))
+                return
+
+            # Delete multiple files 
+            if len(sys.argv) > 3:
+                for i in range(2, len(sys.argv)):
+                    rm(os.path.join(trash_path_files, sys.argv[i]), sys.argv[i])
+                return
+
+            # Delete one file
+            rm(os.path.join(trash_path_files, sys.argv[2]), sys.argv[2])
+
+        case '-E' | '--empty':
+            # Without confirm
+            if len(sys.argv) == 3:
+                if sys.argv[2] == '-y':
+                    files = os.listdir(trash_path_files)
+                    for f in files:
+                         rm(os.path.join(trash_path_files, f), f)
+                    return
+
+            # With confirm
+            if confirm("[Empty trash. Are you sure? Y/n]: "):
+                files = os.listdir(trash_path_files)
+                for f in files:
+                     rm(os.path.join(trash_path_files, f), f)
+
+        case '-RS' | '--restore':
+            if len(sys.argv) == 2:
+                print(colored(c_warn, "No argument specified"))
+                return
+
+            # Restore multiple files 
+            if len(sys.argv) > 3:
+                for i in range(2, len(sys.argv)):
+                    restore(os.path.join(trash_path_files, sys.argv[i]), sys.argv[i])
+                return
+
+            # Restore target
+            restore(os.path.join(trash_path_files, sys.argv[2]), sys.argv[2])
+
+        case '-RSA' | '--restore-all':
+            if confirm("[Restore trash. Are you sure? Y/n]: "):
+                files = os.listdir(trash_path_files)
+                for f in files:
+                    restore(os.path.join(trash_path_files, f), f)
+
+        case '-h' | '-H' | '-help' | '--help':
+            print(help_text)
+
+        case _:
+            print(colored(c_warn, "Argument not found. Use: trash -help"))
+
+# Standard boilerplate to call the main() function to begin
+# the program
+if __name__ == '__main__':
+    main()
