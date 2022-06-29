@@ -36,11 +36,11 @@ https://specifications.freedesktop.org/trash-spec/trashspec-latest.html
 ```
 
 # Install
-1) git clone https://github.com/uriid1/python-trash-cli/
-2) cd python-trash-cli
-3) chmod +x install
-4) sh install
-5) Done! Delele python-trash-cli folder.
+$ git clone https://github.com/uriid1/python-trash-cli/
+$ cd python-trash-cli
+$ chmod +x install
+$ sh install
+$ Done! Delele python-trash-cli folder.
 
 # Uninstall
-sudo rm ~/.local/bin/trash
+$ rm ~/.local/bin/trash
