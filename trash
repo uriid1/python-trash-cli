@@ -217,7 +217,8 @@ def exec_put(argv):
         return
 
     # Put one file
-    put(sys.argv[2])
+    if len(argv) > 2:
+        put(sys.argv[2])
 
 # Exec a function by key -L, --list
 def exec_list():
@@ -230,9 +231,10 @@ def exec_rm(argv):
         for i in range(2, len(argv)):
             rm(os.path.join(TRASH_PATH2FILES, argv[i]), argv[i])
         return
-
+    
     # Delete one file
-    rm(os.path.join(TRASH_PATH2FILES, argv[2]), argv[2])
+    if len(argv) > 2:
+        rm(os.path.join(TRASH_PATH2FILES, argv[2]), argv[2])
 
 # Exec a function by key -E, --empty
 def exec_empty(argv):
@@ -260,7 +262,8 @@ def exec_restore(argv):
         return
 
     # Restore target
-    restore(os.path.join(TRASH_PATH2FILES, argv[2]), argv[2])
+    if len(argv) > 2:
+        restore(os.path.join(TRASH_PATH2FILES, argv[2]), argv[2])
 
 # Exec a function by key -RSA, --restore-all
 def exec_restore_all():
